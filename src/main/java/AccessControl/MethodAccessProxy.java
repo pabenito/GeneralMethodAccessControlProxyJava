@@ -10,7 +10,7 @@ public class MethodAccessProxy<T> {
     private Map<Method, List<Class>> access;
 
     // Constructor
-    MethodAccessProxy(T myClass) {
+    public MethodAccessProxy(T myClass) {
         setClass(myClass);
     }
 
@@ -20,9 +20,15 @@ public class MethodAccessProxy<T> {
         access.get(method).add(client);
     }
 
-    public void grantAccess(Collection<Class> clients, Method method){
+    void grantAccess(Collection<Class> clients, Method method){
         checkValidMethod(method);
         access.get(method).addAll(clients);
+    }
+
+    void grantAccess(Class client, Collection<Method> methods){
+        for(Method method : methods){
+            grantAccess(client, method);
+        }
     }
 
     void removeAccess(Class client, Method method) {
@@ -31,9 +37,16 @@ public class MethodAccessProxy<T> {
         access.get(method).remove(client);
     }
 
-    public void removeAccess(Collection<Class> clients, Method method){
+    void removeAccess(Collection<Class> clients, Method method){
         checkValidMethod(method);
         checkAllHasAccess(clients, method);
+        access.get(method).addAll(clients);
+    }
+
+    void removeAccess(Class client, Collection<Method> methods){
+        for(Method method : methods){
+            removeAccess(client, method);
+        }
     }
 
     // Client public API
@@ -49,13 +62,21 @@ public class MethodAccessProxy<T> {
     }
 
     // Getters & Setters
-    public void setClass(T myClass){
+    public void setClass(T myClass) {
         this.myClass = myClass;
         initAccessMap();
     }
 
-    public List<Method> getMethods(){
+    public List<Method> getAccessibleMethods(Class client){
+        return getPublicMethods().stream().filter(m -> hasAccess(client, m)).toList();
+    }
+
+    private List<Method> getAllMethods(){
         return Arrays.asList(myClass.getClass().getMethods());
+    }
+
+    public List<Method> getPublicMethods(){
+        return getAllMethods().stream().filter(m -> methodIsPublic(m)).toList();
     }
 
     // Private methods
@@ -69,7 +90,7 @@ public class MethodAccessProxy<T> {
     }
 
     private boolean methodExist(Method method) {
-        return getMethods().contains(method);
+        return getAllMethods().contains(method);
     }
 
     private boolean methodIsPublic(Method method) {
